@@ -32,7 +32,8 @@
   .green { background: #3fd35f; } .red { background: #e05548; } .blue { background: #4a7dff; }
   .note { font-size: 11px; color: #8fa0c5; margin-top: 2px; }
   #utc { color: #ffd76a; font-weight: 600; display: inline-block; width: 3.4em; font-variant-numeric: tabular-nums; }
-  #info { bottom: 16px; left: 16px; width: 380px; font-size: 12.5px; line-height: 1.85; color: #c6d4f2; }
+  #langBtn { position: absolute; top: 10px; right: 12px; padding: 2px 10px; font-size: 12px; }
+  #info { bottom: 16px; left: 16px; width: 400px; font-size: 12.5px; line-height: 1.85; color: #c6d4f2; }
   #info b { color: #ffd76a; }
   #legend { bottom: 16px; right: 16px; font-size: 12.5px; line-height: 2; color: #c6d4f2; }
   .line-sample { display: inline-block; width: 26px; height: 3px; border-radius: 2px; margin-right: 8px; vertical-align: 3px; }
@@ -43,31 +44,32 @@
 <div id="scene"></div>
 
 <div class="panel" id="ctrl">
-  <h1>国际日期变更线 · 3D 演示</h1>
-  <div class="sub">拖动地球旋转视角 · 滚轮缩放 · 拖动滑块改变时间</div>
+  <button id="langBtn">English</button>
+  <h1 data-i18n="title">国际日期变更线 · 3D 演示</h1>
+  <div class="sub" data-i18n="sub">拖动地球旋转视角 · 滚轮缩放 · 拖动滑块改变时间</div>
   <div class="row">
-    <span>UTC 时间</span>
+    <span data-i18n="utcLabel">UTC 时间</span>
     <input type="range" id="timeSlider" min="0" max="1439" value="720">
     <span id="utc">12:00</span>
   </div>
   <div class="row">
     <button id="playBtn">▶ 自转演示</button>
     <select id="speed">
-      <option value="15">1秒 = 15分钟</option>
-      <option value="60" selected>1秒 = 1小时</option>
-      <option value="240">1秒 = 4小时</option>
+      <option value="15" data-i18n="speed15">1秒 = 15分钟</option>
+      <option value="60" data-i18n="speed60" selected>1秒 = 1小时</option>
+      <option value="240" data-i18n="speed240">1秒 = 4小时</option>
     </select>
-    <label><input type="checkbox" id="spin"> 相机环绕</label>
+    <label><input type="checkbox" id="spin"> <span data-i18n="spin">相机环绕</span></label>
     <button id="gwBtn">📍 定位格林威治</button>
   </div>
   <div class="dates">
-    <div><span class="dot red"></span>红色区域日期：<b id="dateRed"></b></div>
-    <div><span class="dot blue"></span>蓝色区域日期：<b id="dateBlue"></b></div>
-    <div class="note">红蓝仅用于区分相邻两天，无新旧含义</div>
+    <div><span class="dot red"></span><span data-i18n="redDate">红色区域日期：</span><b id="dateRed"></b></div>
+    <div><span class="dot blue"></span><span data-i18n="blueDate">蓝色区域日期：</span><b id="dateBlue"></b></div>
+    <div class="note" data-i18n="note">红蓝仅用于区分相邻两天，无新旧含义</div>
   </div>
 </div>
 
-<div class="panel" id="info">
+<div class="panel" id="info" data-i18n="info">
   <b>为什么地球上同时存在两个日期？</b><br>
   球面上的<b>红色和蓝色</b>代表同时存在的两个日期（仅作区分，无新旧之分），它们由<b>两条日界线</b>分开：<br>
   ① <b>国际日期变更线</b>（白线，约沿 180° 经线）——人为规定、位置固定；<br>
@@ -78,9 +80,9 @@
 </div>
 
 <div class="panel" id="legend">
-  <div><span class="line-sample" style="background:#fff"></span>国际日期变更线（180°，固定）</div>
-  <div><span class="line-sample" style="background:#39c6ff"></span>0:00 经线（自然日界线，移动）</div>
-  <div><span class="line-sample" style="background:#ffd76a"></span>太阳方向 → 正午经线</div>
+  <div data-i18n="legendIDL"><span class="line-sample" style="background:#fff"></span>国际日期变更线（180°，固定）</div>
+  <div data-i18n="legendMid"><span class="line-sample" style="background:#39c6ff"></span>0:00 经线（自然日界线，移动）</div>
+  <div data-i18n="legendSun"><span class="line-sample" style="background:#ffd76a"></span>太阳方向 → 正午经线</div>
 </div>
 
 <script src="textures/earth.js"></script>
@@ -88,6 +90,50 @@
 <script src="lib/OrbitControls.js"></script>
 <script>
 (function () {
+  // ---------- 中英双语：中文浏览器默认中文，其余默认英文，可手动切换 ----------
+  const I18N = {
+    zh: {
+      docTitle: '国际日期变更线 · 3D 教学演示',
+      title: '国际日期变更线 · 3D 演示',
+      sub: '拖动地球旋转视角 · 滚轮缩放 · 拖动滑块改变时间',
+      utcLabel: 'UTC 时间',
+      play: '▶ 自转演示', pause: '⏸ 暂停',
+      spin: '相机环绕',
+      gwEnter: '📍 定位格林威治', gwExit: '✕ 退出定位',
+      speed15: '1秒 = 15分钟', speed60: '1秒 = 1小时', speed240: '1秒 = 4小时',
+      redDate: '红色区域日期：', blueDate: '蓝色区域日期：',
+      note: '红蓝仅用于区分相邻两天，无新旧含义',
+      info: '<b>为什么地球上同时存在两个日期？</b><br>球面上的<b>红色和蓝色</b>代表同时存在的两个日期（仅作区分，无新旧之分），它们由<b>两条日界线</b>分开：<br>① <b>国际日期变更线</b>（白线，约沿 180° 经线）——人为规定、位置固定；<br>② <b>0:00 经线</b>（蓝线）——自然形成，随地球自转不断向西移动。<br>两条线把地球分成两个日期：从 0:00 经线<b>向东</b>到国际日期变更线是"新的一天"。<br>自西向东越过国际日期变更线，日期要<b>减去一天</b>；反之加一天。<br>当 0:00 经线与 180° 经线重合时（UTC 12:00），全球同属一天。',
+      legendIDL: '<span class="line-sample" style="background:#fff"></span>国际日期变更线（180°，固定）',
+      legendMid: '<span class="line-sample" style="background:#39c6ff"></span>0:00 经线（自然日界线，移动）',
+      legendSun: '<span class="line-sample" style="background:#ffd76a"></span>太阳方向 → 正午经线',
+      lblIDL: '国际日期变更线 180°', lblMid: '0:00 经线', lblNoon: '正午 12:00',
+      lblRise: '日出 6:00', lblSet: '日落 18:00',
+      gwName: '格林威治天文台'
+    },
+    en: {
+      docTitle: 'International Date Line · 3D Interactive Demo',
+      title: 'International Date Line · 3D Demo',
+      sub: 'Drag to rotate · Scroll to zoom · Slide to change time',
+      utcLabel: 'UTC Time',
+      play: '▶ Rotate Demo', pause: '⏸ Pause',
+      spin: 'Orbit Camera',
+      gwEnter: '📍 Locate Greenwich', gwExit: '✕ Exit',
+      speed15: '1s = 15min', speed60: '1s = 1hr', speed240: '1s = 4hr',
+      redDate: 'Red zone date: ', blueDate: 'Blue zone date: ',
+      note: 'Colors only distinguish the two dates, no new/old meaning',
+      info: '<b>Why do two dates exist on Earth at once?</b><br>The <b>red and blue</b> regions show the two dates (colors are only for distinction), separated by <b>two date boundaries</b>:<br>① The <b>International Date Line</b> (white, ~180°) — man-made, fixed to the globe;<br>② The <b>0:00 meridian</b> (blue) — natural, sweeping westward as Earth rotates.<br>From the 0:00 meridian <b>eastward</b> to the Date Line lies the newer date.<br>Crossing the Date Line west→east, the date <b>goes back one day</b>; the other way, forward one day.<br>When the 0:00 meridian meets 180° (UTC 12:00), the whole world shares one date.',
+      legendIDL: '<span class="line-sample" style="background:#fff"></span>International Date Line (180°, fixed)',
+      legendMid: '<span class="line-sample" style="background:#39c6ff"></span>0:00 meridian (natural, moving)',
+      legendSun: '<span class="line-sample" style="background:#ffd76a"></span>Sun direction → noon meridian',
+      lblIDL: "Int'l Date Line 180°", lblMid: '0:00 Meridian', lblNoon: 'Noon 12:00',
+      lblRise: 'Sunrise 6:00', lblSet: 'Sunset 18:00',
+      gwName: 'Greenwich Observatory'
+    }
+  };
+  let lang = (navigator.language || 'zh').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  function t(k) { return I18N[lang][k]; }
+
   const container = document.getElementById('scene');
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
@@ -224,26 +270,39 @@
   meridianLine(180, 0x39c6ff, 1.012, scene);
 
   // ---------- 文字标签 ----------
-  function makeLabel(text, color, scale) {
+  const spriteDraws = [];   // 语言切换时重绘所有标签
+  function makeLabel(textKey, color, scale) {
     const c = document.createElement('canvas'); c.width = 512; c.height = 160;
     const ctx = c.getContext('2d');
-    ctx.font = 'bold 56px "PingFang SC", "Microsoft YaHei", sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 14;
-    ctx.fillStyle = color;
-    ctx.fillText(text, 256, 80); ctx.fillText(text, 256, 80);
+    const tex = new THREE.CanvasTexture(c);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: new THREE.CanvasTexture(c), depthWrite: false, transparent: true
+      map: tex, depthWrite: false, transparent: true
     }));
     sp.scale.set(1.5 * scale, 0.47 * scale, 1);
+    function draw() {
+      ctx.clearRect(0, 0, 512, 160);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 14;
+      ctx.fillStyle = color;
+      let size = 56;
+      ctx.font = `bold ${size}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+      while (ctx.measureText(t(textKey)).width > 470 && size > 22) {
+        size -= 2;
+        ctx.font = `bold ${size}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+      }
+      ctx.fillText(t(textKey), 256, 80); ctx.fillText(t(textKey), 256, 80);
+      tex.needsUpdate = true;
+    }
+    draw();
+    spriteDraws.push(draw);
     scene.add(sp);
     return sp;
   }
-  const lblIDL      = makeLabel('国际日期变更线 180°', '#ffffff', 1.0);
-  const lblMidnight = makeLabel('0:00 经线', '#6fd9ff', 0.85);
-  const lblNoon     = makeLabel('正午 12:00', '#ffd76a', 0.8);
-  const lblSunrise  = makeLabel('日出 6:00', '#ffb38a', 0.7);
-  const lblSunset   = makeLabel('日落 18:00', '#c9a2ff', 0.7);
+  const lblIDL      = makeLabel('lblIDL', '#ffffff', 1.0);
+  const lblMidnight = makeLabel('lblMid', '#6fd9ff', 0.85);
+  const lblNoon     = makeLabel('lblNoon', '#ffd76a', 0.8);
+  const lblSunrise  = makeLabel('lblRise', '#ffb38a', 0.7);
+  const lblSunset   = makeLabel('lblSet', '#c9a2ff', 0.7);
   // 国际日期变更线标签贴在地球上，随自转一起运动
   earthGroup.add(lblIDL);
   lblIDL.position.copy(surfPoint(180, 45, 1.5));
@@ -281,8 +340,13 @@
     gwCtx.textAlign = 'center'; gwCtx.textBaseline = 'middle';
     gwCtx.shadowColor = 'rgba(0,0,0,0.9)'; gwCtx.shadowBlur = 12;
     gwCtx.fillStyle = '#ffe27a';
-    gwCtx.font = 'bold 40px "PingFang SC", "Microsoft YaHei", sans-serif';
-    gwCtx.fillText('格林威治天文台', 256, 55); gwCtx.fillText('格林威治天文台', 256, 55);
+    let gwSize = 40;
+    gwCtx.font = `bold ${gwSize}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+    while (gwCtx.measureText(t('gwName')).width > 470 && gwSize > 22) {
+      gwSize -= 2;
+      gwCtx.font = `bold ${gwSize}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+    }
+    gwCtx.fillText(t('gwName'), 256, 55); gwCtx.fillText(t('gwName'), 256, 55);
     // 时间部分用等宽字体，数字宽度固定、不会抖动
     gwCtx.fillStyle = '#ffffff';
     gwCtx.font = 'bold 42px "SF Mono", Menlo, Consolas, "PingFang SC", monospace';
@@ -296,7 +360,7 @@
   gwBtn.addEventListener('click', () => {
     greenwichMode = !greenwichMode;
     gwBtn.classList.toggle('active', greenwichMode);
-    gwBtn.textContent = greenwichMode ? '✕ 退出定位' : '📍 定位格林威治';
+    gwBtn.textContent = greenwichMode ? t('gwExit') : t('gwEnter');
     gwLabel.visible = greenwichMode;
     controls.enabled = !greenwichMode;
     if (greenwichMode) {
@@ -320,7 +384,8 @@
   const baseUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   function fmtDate(ms) {
     const d = new Date(ms);
-    return (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日';
+    if (lang === 'zh') return (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日';
+    return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()] + ' ' + d.getUTCDate();
   }
 
   function setMinutes(min) {
@@ -366,12 +431,29 @@
   const speedSel = document.getElementById('speed');
   playBtn.addEventListener('click', () => {
     playing = !playing;
-    playBtn.textContent = playing ? '⏸ 暂停' : '▶ 自转演示';
+    playBtn.textContent = playing ? t('pause') : t('play');
   });
 
   document.getElementById('spin').addEventListener('change', e => {
     controls.autoRotate = e.target.checked;
   });
+
+  // 语言切换：刷新全部 UI 文本、3D 标签与日期显示
+  const langBtn = document.getElementById('langBtn');
+  function applyLang() {
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = t(el.dataset.i18n); });
+    playBtn.textContent = playing ? t('pause') : t('play');
+    gwBtn.textContent = greenwichMode ? t('gwExit') : t('gwEnter');
+    langBtn.textContent = lang === 'zh' ? 'English' : '中文';
+    spriteDraws.forEach(d => d());
+    document.title = t('docTitle');
+    setMinutes(totalMinutes);
+  }
+  langBtn.addEventListener('click', () => {
+    lang = lang === 'zh' ? 'en' : 'zh';
+    applyLang();
+  });
+  applyLang();
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
