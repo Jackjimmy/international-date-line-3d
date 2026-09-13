@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>国际日期变更线 · 3D 教学演示</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  .panel {
+    position: fixed; z-index: 10; color: #e8f0ff;
+    background: rgba(10, 16, 30, 0.78); border: 1px solid rgba(120,160,255,0.25);
+    border-radius: 12px; padding: 14px 18px; backdrop-filter: blur(6px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+  #ctrl { top: 16px; left: 16px; width: 350px; }
+  #ctrl h1 { font-size: 17px; margin: 0 0 4px; color: #ffd76a; letter-spacing: 1px; }
+  #ctrl .sub { font-size: 12px; color: #9fb2d8; margin-bottom: 12px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 13px; flex-wrap: wrap; }
+  input[type=range] { flex: 1; accent-color: #ffd76a; }
+  button {
+    background: #1d2a4d; color: #cfe0ff; border: 1px solid rgba(140,170,255,0.4);
+    border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { background: #2a3c6b; }
+  button.active { background: #ffd76a; color: #20263d; border-color: #ffd76a; font-weight: 600; }
+  select {
+    background: #1d2a4d; color: #cfe0ff; border: 1px solid rgba(140,170,255,0.4);
+    border-radius: 8px; padding: 4px 6px; font-size: 12px;
+  }
+  .dates { margin-top: 10px; font-size: 13px; line-height: 1.9; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .green { background: #3fd35f; } .red { background: #e05548; } .blue { background: #4a7dff; }
+  .note { font-size: 11px; color: #8fa0c5; margin-top: 2px; }
+  #utc { color: #ffd76a; font-weight: 600; display: inline-block; width: 3.4em; font-variant-numeric: tabular-nums; }
+  #info { bottom: 16px; left: 16px; width: 380px; font-size: 12.5px; line-height: 1.85; color: #c6d4f2; }
+  #info b { color: #ffd76a; }
+  #legend { bottom: 16px; right: 16px; font-size: 12.5px; line-height: 2; color: #c6d4f2; }
+  .line-sample { display: inline-block; width: 26px; height: 3px; border-radius: 2px; margin-right: 8px; vertical-align: 3px; }
+  label { user-select: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<div class="panel" id="ctrl">
+  <h1>国际日期变更线 · 3D 演示</h1>
+  <div class="sub">拖动地球旋转视角 · 滚轮缩放 · 拖动滑块改变时间</div>
+  <div class="row">
+    <span>UTC 时间</span>
+    <input type="range" id="timeSlider" min="0" max="1439" value="720">
+    <span id="utc">12:00</span>
+  </div>
+  <div class="row">
+    <button id="playBtn">▶ 自转演示</button>
+    <select id="speed">
+      <option value="15">1秒 = 15分钟</option>
+      <option value="60" selected>1秒 = 1小时</option>
+      <option value="240">1秒 = 4小时</option>
+    </select>
+    <label><input type="checkbox" id="spin"> 相机环绕</label>
+    <button id="gwBtn">📍 定位格林威治</button>
+  </div>
+  <div class="dates">
+    <div><span class="dot red"></span>红色区域日期：<b id="dateRed"></b></div>
+    <div><span class="dot blue"></span>蓝色区域日期：<b id="dateBlue"></b></div>
+    <div class="note">红蓝仅用于区分相邻两天，无新旧含义</div>
+  </div>
+</div>
+
+<div class="panel" id="info">
+  <b>为什么地球上同时存在两个日期？</b><br>
+  球面上的<b>红色和蓝色</b>代表同时存在的两个日期（仅作区分，无新旧之分），它们由<b>两条日界线</b>分开：<br>
+  ① <b>国际日期变更线</b>（白线，约沿 180° 经线）——人为规定、位置固定；<br>
+  ② <b>0:00 经线</b>（蓝线）——自然形成，随地球自转不断向西移动。<br>
+  两条线把地球分成两个日期：从 0:00 经线<b>向东</b>到国际日期变更线是"新的一天"。<br>
+  自西向东越过国际日期变更线，日期要<b>减去一天</b>；反之加一天。<br>
+  当 0:00 经线与 180° 经线重合时（UTC 12:00），全球同属一天。
+</div>
+
+<div class="panel" id="legend">
+  <div><span class="line-sample" style="background:#fff"></span>国际日期变更线（180°，固定）</div>
+  <div><span class="line-sample" style="background:#39c6ff"></span>0:00 经线（自然日界线，移动）</div>
+  <div><span class="line-sample" style="background:#ffd76a"></span>太阳方向 → 正午经线</div>
+</div>
+
+<script src="textures/earth.js"></script>
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script>
+(function () {
+  const container = document.getElementById('scene');
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(0.2, 0.7, 5.2);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(devicePixelRatio);
+  renderer.setSize(innerWidth, innerHeight);
+  container.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 2.2;
+  controls.maxDistance = 12;
+  controls.autoRotateSpeed = 1.2;
+
+  // ---------- 星空背景 ----------
+  (function makeStars() {
+    const N = 2500, pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const r = 60 + Math.random() * 60;
+      const t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+      pos[i * 3]     = r * Math.sin(p) * Math.cos(t);
+      pos[i * 3 + 1] = r * Math.cos(p);
+      pos[i * 3 + 2] = r * Math.sin(p) * Math.sin(t);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.28, sizeAttenuation: true })));
+  })();
+
+  // ---------- 太阳 ----------
+  const SUN_POS = new THREE.Vector3(2.9, 0.25, 0);
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffd84d }));
+  sun.position.copy(SUN_POS);
+  scene.add(sun);
+  (function glow() {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const ctx = c.getContext('2d');
+    const grd = ctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+    grd.addColorStop(0, 'rgba(255,230,120,0.85)');
+    grd.addColorStop(0.4, 'rgba(255,200,60,0.25)');
+    grd.addColorStop(1, 'rgba(255,200,60,0)');
+    ctx.fillStyle = grd; ctx.fillRect(0, 0, 256, 256);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    sp.scale.set(3.4, 3.4, 1);
+    sp.position.copy(SUN_POS);
+    scene.add(sp);
+  })();
+
+  // ---------- 地球 ----------
+  // 约定：经度 lon ∈ (-180,180]，u = (lon+180)/360（与等距圆柱贴图一致）
+  function surfPoint(lonDeg, latDeg, r) {
+    const phi = (lonDeg + 180) / 360 * Math.PI * 2;
+    const theta = Math.PI / 2 - latDeg * Math.PI / 180;
+    return new THREE.Vector3(
+      -Math.cos(phi) * Math.sin(theta) * r,
+       Math.cos(theta) * r,
+       Math.sin(phi) * Math.sin(theta) * r
+    );
+  }
+
+  const earthUniforms = {
+    map: { value: new THREE.TextureLoader().load(EARTH_TEXTURE_B64) },
+    sunDir: { value: SUN_POS.clone().normalize() },
+    utcDays: { value: 0 }
+  };
+  const earthMat = new THREE.ShaderMaterial({
+    uniforms: earthUniforms,
+    vertexShader: `
+      varying vec2 vUv; varying vec3 vNormal;
+      void main() {
+        vUv = uv;
+        // 世界空间法线：光照只取决于地日关系，与观察视角无关
+        vNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform sampler2D map; uniform vec3 sunDir; uniform float utcDays;
+      varying vec2 vUv; varying vec3 vNormal;
+      void main() {
+        vec3 tex = texture2D(map, vUv).rgb;
+        float lon = (vUv.x - 0.5) * 360.0;
+        // 本地日期 = floor(UTC 天数 + 经度/360)，奇偶天交替染红/蓝
+        // 该公式天然包含两条日界线：过 0:00 经线日期 +1，过 180° 经线日期 -1
+        float dayIndex = floor(utcDays + lon / 360.0);
+        vec3 zone = mod(dayIndex, 2.0) < 0.5 ? vec3(0.92, 0.36, 0.30) : vec3(0.30, 0.55, 1.0);
+        float diff = dot(normalize(vNormal), normalize(sunDir));
+        float day = smoothstep(-0.12, 0.35, diff);
+        vec3 tinted = mix(tex, zone * (tex * 0.55 + 0.45), 0.48);
+        vec3 col = tinted * (0.22 + 0.95 * day);
+        gl_FragColor = vec4(col, 1.0);
+      }`
+  });
+  const earth = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 96), earthMat);
+  // 自转组：地球贴图、经纬网、国际日期变更线都贴在其中，一起绕地轴旋转
+  const earthGroup = new THREE.Group();
+  earthGroup.add(earth);
+  scene.add(earthGroup);
+
+  // ---------- 经纬网（每 15° 一条经线 = 一个时区，随地球自转） ----------
+  (function graticule() {
+    const mat = new THREE.LineBasicMaterial({ color: 0x88aaff, transparent: true, opacity: 0.11 });
+    for (let lon = -165; lon <= 180; lon += 15) {
+      const pts = [];
+      for (let lat = -80; lat <= 80; lat += 4) pts.push(surfPoint(lon, lat, 1.002));
+      earthGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+    }
+    for (let lat = -60; lat <= 60; lat += 30) {
+      const pts = [];
+      for (let lon = -180; lon <= 180; lon += 4) pts.push(surfPoint(lon, lat, 1.002));
+      earthGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+    }
+  })();
+
+  // ---------- 两条日界线 ----------
+  function meridianLine(lon, color, r, parent) {
+    const pts = [];
+    for (let lat = -85; lat <= 85; lat += 2) pts.push(surfPoint(lon, lat, r));
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 })
+    );
+    parent.add(line);
+    return line;
+  }
+  // 国际日期变更线贴在地球 180° 经线上，随地球一起自转
+  meridianLine(180, 0xffffff, 1.008, earthGroup);
+  // 0:00 经线在空间中固定于背阳一侧（-x 方向），地球自转时从它下面转过
+  meridianLine(180, 0x39c6ff, 1.012, scene);
+
+  // ---------- 文字标签 ----------
+  function makeLabel(text, color, scale) {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 160;
+    const ctx = c.getContext('2d');
+    ctx.font = 'bold 56px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 14;
+    ctx.fillStyle = color;
+    ctx.fillText(text, 256, 80); ctx.fillText(text, 256, 80);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(c), depthWrite: false, transparent: true
+    }));
+    sp.scale.set(1.5 * scale, 0.47 * scale, 1);
+    scene.add(sp);
+    return sp;
+  }
+  const lblIDL      = makeLabel('国际日期变更线 180°', '#ffffff', 1.0);
+  const lblMidnight = makeLabel('0:00 经线', '#6fd9ff', 0.85);
+  const lblNoon     = makeLabel('正午 12:00', '#ffd76a', 0.8);
+  const lblSunrise  = makeLabel('日出 6:00', '#ffb38a', 0.7);
+  const lblSunset   = makeLabel('日落 18:00', '#c9a2ff', 0.7);
+  // 国际日期变更线标签贴在地球上，随自转一起运动
+  earthGroup.add(lblIDL);
+  lblIDL.position.copy(surfPoint(180, 45, 1.5));
+  // 以下标签在空间中固定（相对太阳）：正午在向阳侧，0:00 在背阳侧，日出/日落在晨昏线两侧
+  lblMidnight.position.copy(surfPoint(180, -32, 1.45));
+  lblNoon.position.copy(surfPoint(0, 8, 1.45));
+  lblSunrise.position.copy(surfPoint(-90, -20, 1.4));
+  lblSunset.position.copy(surfPoint(90, -20, 1.4));
+
+  // ---------- 格林威治天文台定位 ----------
+  const UP = new THREE.Vector3(0, 1, 0);
+  const GW = { lon: 0, lat: 51.48 };   // 格林威治天文台坐标
+  const gwSurfLocal = surfPoint(GW.lon, GW.lat, 1.0);
+  const gwCamLocal = surfPoint(GW.lon, GW.lat, 4.0);
+
+  // 黄色标记点（贴在地面，随地球自转）
+  const gwDot = new THREE.Mesh(
+    new THREE.SphereGeometry(0.022, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffee58 })
+  );
+  gwDot.position.copy(surfPoint(GW.lon, GW.lat, 1.012));
+  earthGroup.add(gwDot);
+
+  // 可更新文字的标签：显示格林威治本地时间（0° 经线的本地时间即 UTC）
+  const gwCanvas = document.createElement('canvas'); gwCanvas.width = 512; gwCanvas.height = 220;
+  const gwCtx = gwCanvas.getContext('2d');
+  const gwTexture = new THREE.CanvasTexture(gwCanvas);
+  const gwLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: gwTexture, depthWrite: false, transparent: true }));
+  gwLabel.scale.set(1.05, 0.45, 1);
+  gwLabel.position.copy(surfPoint(GW.lon, GW.lat + 14, 1.25));
+  gwLabel.visible = false;
+  earthGroup.add(gwLabel);
+  function drawGwLabel(timeStr, dateStr) {
+    gwCtx.clearRect(0, 0, 512, 220);
+    gwCtx.textAlign = 'center'; gwCtx.textBaseline = 'middle';
+    gwCtx.shadowColor = 'rgba(0,0,0,0.9)'; gwCtx.shadowBlur = 12;
+    gwCtx.fillStyle = '#ffe27a';
+    gwCtx.font = 'bold 40px "PingFang SC", "Microsoft YaHei", sans-serif';
+    gwCtx.fillText('格林威治天文台', 256, 55); gwCtx.fillText('格林威治天文台', 256, 55);
+    // 时间部分用等宽字体，数字宽度固定、不会抖动
+    gwCtx.fillStyle = '#ffffff';
+    gwCtx.font = 'bold 42px "SF Mono", Menlo, Consolas, "PingFang SC", monospace';
+    const line2 = timeStr + ' · ' + dateStr;
+    gwCtx.fillText(line2, 256, 145); gwCtx.fillText(line2, 256, 145);
+    gwTexture.needsUpdate = true;
+  }
+
+  let greenwichMode = false, savedAutoRotate = false;
+  const gwBtn = document.getElementById('gwBtn');
+  gwBtn.addEventListener('click', () => {
+    greenwichMode = !greenwichMode;
+    gwBtn.classList.toggle('active', greenwichMode);
+    gwBtn.textContent = greenwichMode ? '✕ 退出定位' : '📍 定位格林威治';
+    gwLabel.visible = greenwichMode;
+    controls.enabled = !greenwichMode;
+    if (greenwichMode) {
+      savedAutoRotate = controls.autoRotate;
+      controls.autoRotate = false;
+      setMinutes(totalMinutes);   // 立即刷新标签
+    } else {
+      controls.autoRotate = savedAutoRotate;
+      controls.target.set(0, 0, 0);
+    }
+  });
+
+  // ---------- 时间与日期逻辑 ----------
+  const slider = document.getElementById('timeSlider');
+  const utcText = document.getElementById('utc');
+  const dateRedEl = document.getElementById('dateRed');
+  const dateBlueEl = document.getElementById('dateBlue');
+
+  // 以"今天"（本地日期）的 UTC 0 点为基准
+  const now = new Date();
+  const baseUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  function fmtDate(ms) {
+    const d = new Date(ms);
+    return (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日';
+  }
+
+  function setMinutes(min) {
+    const dayMin = ((min % 1440) + 1440) % 1440;
+    const h = Math.floor(dayMin / 60), m = Math.floor(dayMin % 60);
+    utcText.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+
+    const hours = min / 60;
+    // 地球自转：UTC 12:00 时 0° 经线正对太阳，之后每小时向东转过 15°
+    earthGroup.rotation.y = (hours - 12) * Math.PI / 12;
+
+    // 日期按奇偶天交替染红/蓝：颜色连续变化，仅区分相邻两天，无新旧含义
+    const t = baseUTC + min * 60000;
+    const utcDays = t / 86400000;
+    earthUniforms.utcDays.value = utcDays;
+
+    // idxNew = 180° 经线处的日期序号（全球最新的一天）；着色器中偶数天为红、奇数天为蓝
+    const idxNew = Math.floor(utcDays + 0.5);
+    const dNew = fmtDate(t + 12 * 3600e3), dOld = fmtDate(t - 12 * 3600e3);
+    if (idxNew % 2 === 0) { dateRedEl.textContent = dNew; dateBlueEl.textContent = dOld; }
+    else                  { dateBlueEl.textContent = dNew; dateRedEl.textContent = dOld; }
+
+    // 格林威治本地时间：0° 经线的本地时间就是 UTC
+    if (gwLabel.visible) drawGwLabel(utcText.textContent, fmtDate(t));
+  }
+
+  // 初始化为当前 UTC 时间；totalMinutes 连续累计、可跨天，避免因滑块回绕导致日期奇偶跳变
+  let totalMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  slider.value = totalMinutes;
+  setMinutes(totalMinutes);
+
+  slider.addEventListener('input', () => {
+    // 取与当前时间最接近的等价值：拖动跨过 0 点时向前走，而不是回跳一整天
+    const cur = ((totalMinutes % 1440) + 1440) % 1440;
+    const delta = (((+slider.value - cur + 720) % 1440) + 1440) % 1440 - 720;
+    totalMinutes += delta;
+    setMinutes(totalMinutes);
+  });
+
+  // 自转演示：速度由下拉框决定（每分钟现实时间推进多少分钟）
+  let playing = false, lastT = 0;
+  const playBtn = document.getElementById('playBtn');
+  const speedSel = document.getElementById('speed');
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.textContent = playing ? '⏸ 暂停' : '▶ 自转演示';
+  });
+
+  document.getElementById('spin').addEventListener('change', e => {
+    controls.autoRotate = e.target.checked;
+  });
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  function animate(t) {
+    requestAnimationFrame(animate);
+    const dt = lastT ? (t - lastT) / 1000 : 0;
+    lastT = t;
+    if (playing) {
+      totalMinutes += dt * (+speedSel.value);
+      slider.value = ((totalMinutes % 1440) + 1440) % 1440;
+      setMinutes(totalMinutes);
+    }
+    if (greenwichMode) {
+      // 相机锁定在格林威治上空，跟随地球自转一起运动
+      camera.position.copy(gwCamLocal).applyAxisAngle(UP, earthGroup.rotation.y);
+      camera.lookAt(gwSurfLocal.clone().applyAxisAngle(UP, earthGroup.rotation.y));
+    } else {
+      controls.update();
+    }
+    renderer.render(scene, camera);
+  }
+  animate(0);
+})();
+</script>
+</body>
+</html>
